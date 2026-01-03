@@ -1,7 +1,7 @@
 # Title:        Custom NMAP Scan
 # Description:  Custom nmap scan with zenmap style, you choose the scan type
 # Author:       0xmupa
-# Version:      1.1
+# Version:      1.0
 
 LOOTDIR=/root/loot/nmapcust
 
