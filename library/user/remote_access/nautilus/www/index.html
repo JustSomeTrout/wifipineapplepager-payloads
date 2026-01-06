@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nautilus - Payload Launcher</title>
+<style>
+:root{--bg:#0a0a0f;--surface:#12121a;--surface2:#1a1a25;--border:#2a2a3a;--accent:#00d4aa;--accent2:#00b894;--danger:#ff4757;--text:#e8e8e8;--text2:#888;--glow:0 0 20px rgba(0,212,170,0.3)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow:hidden}
+.header{background:linear-gradient(135deg,var(--surface) 0%,var(--surface2) 100%);padding:12px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.logo{display:flex;align-items:center;gap:10px}
+.logo img{width:36px;height:36px;border-radius:8px}
+.logo h1{font-size:1.4em;font-weight:700;background:linear-gradient(135deg,var(--accent),#00f5d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.header-right{display:flex;align-items:center;gap:16px}
+.status{display:flex;align-items:center;gap:8px;font-size:0.85em;color:var(--text2)}
+.status::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:var(--glow);animation:pulse 2s infinite}
+.status.error::before{background:var(--danger)}
+.status.running::before{background:#ffd93d;animation:blink 0.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+.container{display:flex;height:calc(100vh - 61px)}
+.sidebar{width:280px;min-width:280px;background:var(--surface);overflow-y:auto;border-right:1px solid var(--border);scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.sidebar::-webkit-scrollbar{width:6px}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.main{flex:1;display:flex;flex-direction:row;overflow:hidden;background:var(--bg)}
+.main-left{flex:1;display:flex;flex-direction:column;border-right:1px solid var(--border);min-width:300px;max-width:450px}
+.main-right{flex:2;display:flex;flex-direction:column;overflow:hidden}
+.search{padding:12px 16px;border-bottom:1px solid var(--border)}
+.search input{width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.9em;transition:all 0.2s}
+.search input:focus{outline:none;border-color:var(--accent);box-shadow:var(--glow)}
+.search input::placeholder{color:var(--text2)}
+.category{border-bottom:1px solid var(--border)}
+.cat-header{padding:12px 16px;background:var(--surface2);cursor:pointer;font-weight:600;font-size:0.8em;display:flex;justify-content:space-between;align-items:center;transition:all 0.2s;text-transform:uppercase;letter-spacing:0.5px;color:var(--text2)}
+.cat-header:hover{background:var(--border);color:var(--text)}
+.cat-header .count{background:var(--bg);padding:2px 8px;border-radius:10px;font-size:0.8em;font-weight:500}
+.cat-header .arrow{transition:transform 0.3s ease;font-size:0.7em}
+.cat-header.open .arrow{transform:rotate(90deg)}
+.cat-header.open{color:var(--accent)}
+.payloads{max-height:0;overflow:hidden;transition:max-height 0.3s ease;background:var(--bg)}
+.payloads.open{max-height:50vh;overflow-y:auto}
+.payload{padding:10px 16px 10px 20px;cursor:pointer;border-bottom:1px solid var(--border);transition:all 0.15s;position:relative}
+.payload::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent);transform:scaleY(0);transition:transform 0.2s}
+.payload:hover{background:var(--surface2)}
+.payload:hover::before{transform:scaleY(1)}
+.payload.active{background:var(--surface2)}
+.payload.active::before{transform:scaleY(1)}
+.payload .name{color:var(--text);font-weight:500;font-size:0.85em;margin-bottom:2px}
+.payload .desc{color:var(--text2);font-size:0.75em;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.detail{padding:20px;background:linear-gradient(180deg,var(--surface) 0%,var(--bg) 100%);flex:1;overflow-y:auto}
+.detail h2{color:var(--text);margin-bottom:8px;font-size:1.2em;font-weight:600}
+.detail .meta{display:flex;gap:16px;color:var(--text2);font-size:0.8em;margin-bottom:12px;flex-wrap:wrap}
+.detail .meta span{display:flex;align-items:center;gap:5px}
+.detail .meta svg{width:14px;height:14px;fill:var(--text2)}
+.detail .description{color:var(--text2);line-height:1.5;margin-bottom:16px;font-size:0.9em}
+.actions{display:flex;gap:10px;flex-wrap:wrap}
+.btn{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#000;border:none;padding:10px 24px;border-radius:8px;cursor:pointer;font-size:0.85em;font-weight:600;transition:all 0.2s;display:flex;align-items:center;gap:6px}
+.btn:hover{transform:translateY(-2px);box-shadow:var(--glow)}
+.btn:active{transform:translateY(0)}
+.btn.stop{background:linear-gradient(135deg,var(--danger),#ff6b81)}
+.btn.secondary{background:transparent;border:1px solid var(--border);color:var(--text);padding:10px 16px}
+.btn.secondary:hover{border-color:var(--accent);color:var(--accent)}
+.console-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.console-header{padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:0.8em;color:var(--text2)}
+.console-header button{background:none;border:1px solid var(--border);color:var(--text2);padding:4px 10px;border-radius:4px;cursor:pointer;font-size:0.85em}
+.console-header button:hover{border-color:var(--accent);color:var(--accent)}
+.console{flex:1;background:#050508;overflow-y:auto;padding:16px;font-family:'JetBrains Mono','Fira Code','Consolas',monospace;font-size:0.8em;line-height:1.5;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.console::-webkit-scrollbar{width:6px}
+.console::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.console .line{margin:1px 0;padding:1px 0;white-space:pre-wrap;word-break:break-word}
+.console .cyan,.console .green{color:var(--accent)}
+.console .yellow{color:#ffd93d}
+.console .red{color:var(--danger)}
+.console .magenta{color:#ff6b9d}
+.console .blue{color:#54a0ff}
+.empty{padding:40px 30px;text-align:center;color:var(--text2)}
+.empty svg{width:48px;height:48px;fill:var(--border);margin-bottom:12px}
+.empty h3{color:var(--text);margin-bottom:6px;font-weight:500;font-size:1em}
+.empty p{font-size:0.85em}
+@media(max-width:1100px){.main{flex-direction:column}.main-left{max-width:none;border-right:none;border-bottom:1px solid var(--border);max-height:200px}.main-right{flex:1}}
+@media(max-width:700px){.container{flex-direction:column}.sidebar{width:100%;max-height:35vh;border-right:none;border-bottom:1px solid var(--border)}.main{flex:1}.main-left{max-height:150px}}
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);display:none;justify-content:center;align-items:center;z-index:1000;backdrop-filter:blur(4px)}
+.modal-overlay.show{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;min-width:300px;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.5)}
+.modal-title{font-size:1.1em;font-weight:600;color:var(--accent);margin-bottom:10px}
+.modal-message{color:var(--text);line-height:1.5;margin-bottom:16px;font-size:0.95em}
+.modal-input{width:100%;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:1em;margin-bottom:16px}
+.modal-input:focus{outline:none;border-color:var(--accent)}
+.modal-buttons{display:flex;gap:10px;justify-content:flex-end}
+</style>
+</head>
+<body>
+<div class="header">
+<div class="logo">
+<img src="nautilus_logo.png" alt="Nautilus" onerror="this.style.display='none'">
+<h1>Nautilus</h1>
+</div>
+<div class="header-right">
+<div class="status" id="status">Connecting...</div>
+</div>
+</div>
+<div class="container">
+<div class="sidebar">
+<div class="search"><input type="text" id="searchBox" placeholder="Search payloads..." oninput="filter(this.value)"></div>
+<div id="categories"></div>
+</div>
+<div class="main">
+<div class="main-left">
+<div class="detail" id="detail">
+<div class="empty">
+<svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+<h3>Select a Payload</h3>
+<p>Choose from the sidebar</p>
+</div>
+</div>
+</div>
+<div class="main-right">
+<div class="console-wrap">
+<div class="console-header"><span>Console Output</span><span><button onclick="clearConsole()">Clear</button> <span id="lineCount">0 lines</span></span></div>
+<div class="console" id="console"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Prompt Modal -->
+<div class="modal-overlay" id="modalOverlay">
+<div class="modal">
+<div class="modal-title" id="modalTitle">Confirm</div>
+<div class="modal-message" id="modalMessage"></div>
+<input type="text" class="modal-input" id="modalInput" style="display:none">
+<div class="modal-buttons">
+<button class="btn secondary" id="modalCancel" onclick="respondPrompt(false)">Cancel</button>
+<button class="btn" id="modalConfirm" onclick="respondPrompt(true)">Confirm</button>
+</div>
+</div>
+</div>
+<script>
+let payloads={},filtered={},selected=null,running=false,evtSource=null,lineCount=0;
+const $=id=>document.getElementById(id);
+
+async function load(){
+  try{
+    const r=await fetch('/cgi-bin/api.sh?action=list');
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const text=await r.text();
+    payloads=JSON.parse(text);
+    filtered=payloads;
+    render();
+    $('status').textContent='Ready • '+Object.values(payloads).flat().length+' payloads';
+  }catch(e){
+    $('status').textContent='Error: '+e.message;
+    $('status').classList.add('error');
+    console.error(e);
+  }
+}
+
+function render(){
+  let html='';
+  const cats=Object.keys(filtered).sort((a,b)=>a.toLowerCase().localeCompare(b.toLowerCase()));
+  cats.forEach(cat=>{
+    const items=filtered[cat];
+    if(!items||!items.length)return;
+    const sorted=[...items].sort((a,b)=>(a.name||'').toLowerCase().localeCompare((b.name||'').toLowerCase()));
+    html+=`<div class="category"><div class="cat-header" onclick="toggle(this)"><span>${cat}</span><span style="display:flex;align-items:center;gap:8px"><span class="count">${items.length}</span><span class="arrow">▶</span></span></div><div class="payloads">`;
+    sorted.forEach((p,i)=>{
+      const name=escHtml(p.name||'');
+      const desc=escHtml(p.desc||'');
+      html+=`<div class="payload" data-path="${p.path}" onclick="selectByPath('${p.path}')"><div class="name">${name}</div><div class="desc">${desc}</div></div>`;
+    });
+    html+=`</div></div>`;
+  });
+  $('categories').innerHTML=html||'<div class="empty"><p>No payloads found</p></div>';
+}
+
+function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function filter(q){
+  q=q.toLowerCase().trim();
+  if(!q){filtered=payloads;render();return;}
+  filtered={};
+  for(const cat in payloads){
+    const matches=payloads[cat].filter(p=>(p.name+' '+p.desc+' '+p.author).toLowerCase().includes(q));
+    if(matches.length)filtered[cat]=matches;
+  }
+  render();
+}
+
+function toggle(el){el.classList.toggle('open');el.nextElementSibling.classList.toggle('open');}
+
+function selectByPath(path){
+  document.querySelectorAll('.payload').forEach(p=>p.classList.remove('active'));
+  const el=document.querySelector('.payload[data-path="'+path+'"]');
+  if(el)el.classList.add('active');
+  for(const cat in payloads){
+    const found=payloads[cat].find(p=>p.path===path);
+    if(found){
+      selected=found;
+      const author=selected.author?escHtml(selected.author):'';
+      const desc=selected.desc?escHtml(selected.desc):'';
+      const authorHtml=author?'<span><svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>'+author+'</span>':'';
+      const descHtml=desc?'<div class="description">'+desc+'</div>':'';
+      $('detail').innerHTML='<h2>'+escHtml(selected.name)+'</h2><div class="meta">'+authorHtml+'<span><svg viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/></svg>'+cat+'</span></div>'+descHtml+'<div class="actions"><button class="btn" id="runBtn" onclick="run()"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>'+(running?'Stop':'Run Payload')+'</button></div>';
+      break;
+    }
+  }
+}
+
+async function run(){
+  if(!selected)return;
+  if(running){stop();return;}
+  running=true;lineCount=0;
+  updateRunBtn();
+  $('console').innerHTML='';
+  $('lineCount').textContent='0 lines';
+  $('status').textContent='Running...';
+  $('status').classList.add('running');
+
+  evtSource=new EventSource(`/cgi-bin/api.sh?action=run&path=${encodeURIComponent(selected.path)}`);
+  evtSource.onmessage=e=>{
+    try{
+      const d=JSON.parse(e.data);
+      const text=d.text.replace(/\\n/g,'\n');
+      const lines=text.split('\n');
+      lines.forEach(t=>{
+        if(t.trim()==='')return;
+        const line=document.createElement('div');
+        line.className='line '+(d.color||'');
+        line.textContent=t;
+        $('console').appendChild(line);
+        lineCount++;
+      });
+      $('console').scrollTop=$('console').scrollHeight;
+      $('lineCount').textContent=lineCount+' lines';
+    }catch(err){}
+  };
+  evtSource.addEventListener('prompt',e=>{
+    try{
+      const d=JSON.parse(e.data);
+      showPrompt(d.type,d.message,d.default||'');
+    }catch(err){}
+  });
+  evtSource.onerror=()=>{stop();};
+  evtSource.addEventListener('done',()=>{stop();});
+}
+
+function updateRunBtn(){
+  const btn=$('runBtn');
+  if(!btn)return;
+  if(running){
+    btn.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M6 6h12v12H6z"/></svg>Stop';
+    btn.classList.add('stop');
+  }else{
+    btn.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Run Payload';
+    btn.classList.remove('stop');
+  }
+}
+
+function stop(){
+  if(evtSource){evtSource.close();evtSource=null;}
+  running=false;
+  updateRunBtn();
+  $('status').textContent='Ready • '+Object.values(payloads).flat().length+' payloads';
+  $('status').classList.remove('running');
+  fetch('/cgi-bin/api.sh?action=stop').catch(()=>{});
+}
+
+function clearConsole(){
+  $('console').innerHTML='';
+  lineCount=0;
+  $('lineCount').textContent='0 lines';
+}
+
+let currentPromptType='confirm';
+let currentPromptDefault='';
+const promptTitles={confirm:'Confirm',text:'Enter Text',number:'Enter Number',ip:'Enter IP Address',mac:'Enter MAC Address',alert:'Alert',error:'Error'};
+const promptPatterns={
+  ip:/^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/,
+  mac:/^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/
+};
+const promptPlaceholders={text:'Enter text...',number:'0',ip:'192.168.1.1',mac:'00:11:22:33:44:55'};
+
+function showPrompt(type,message,defaultVal){
+  currentPromptType=type;
+  currentPromptDefault=defaultVal||'';
+  $('modalTitle').textContent=promptTitles[type]||'Input';
+  const msgHtml=escHtml(message.replace(/\\n/g,'\n')).replace(/\n/g,'<br>');
+  $('modalMessage').innerHTML=msgHtml;
+  const inp=$('modalInput');
+  const confirmBtn=$('modalConfirm');
+  const cancelBtn=$('modalCancel');
+
+  if(type==='alert'||type==='error'){
+    inp.style.display='none';
+    confirmBtn.textContent='OK';
+    cancelBtn.style.display='none';
+    $('modalTitle').style.color=type==='error'?'#ff6b6b':'#ffd93d';
+  }else if(type==='confirm'){
+    inp.style.display='none';
+    confirmBtn.textContent='Yes';
+    cancelBtn.textContent='No';
+    cancelBtn.style.display='';
+    $('modalTitle').style.color='';
+  }else{
+    inp.style.display='block';
+    inp.type=type==='number'?'number':'text';
+    inp.placeholder=promptPlaceholders[type]||'';
+    inp.value=currentPromptDefault;
+    confirmBtn.textContent='Submit';
+    cancelBtn.textContent='Cancel';
+    cancelBtn.style.display='';
+    $('modalTitle').style.color='';
+    inp.oninput=()=>validatePromptInput();
+    setTimeout(()=>{inp.focus();inp.select();},100);
+  }
+  $('modalOverlay').classList.add('show');
+  validatePromptInput();
+  // Log prompt to console
+  const line=document.createElement('div');
+  line.className='line '+(type==='error'?'red':type==='alert'?'yellow':'cyan');
+  line.textContent=(type==='error'?'❌ ':type==='alert'?'⚠️ ':'⏳ ')+message+(currentPromptDefault?' (default: '+currentPromptDefault+')':'');
+  $('console').appendChild(line);
+  $('console').scrollTop=$('console').scrollHeight;
+}
+
+function validatePromptInput(){
+  const inp=$('modalInput');
+  const btn=$('modalConfirm');
+  const val=inp.value.trim();
+  let valid=true;
+
+  if(currentPromptType==='number'){
+    valid=val===''||!isNaN(parseFloat(val));
+  }else if(currentPromptType==='ip'){
+    valid=promptPatterns.ip.test(val);
+  }else if(currentPromptType==='mac'){
+    valid=promptPatterns.mac.test(val);
+  }
+
+  btn.disabled=!valid&&currentPromptType!=='confirm'&&currentPromptType!=='text';
+  inp.style.borderColor=valid?'var(--border)':'#e74c3c';
+}
+
+async function respondPrompt(confirmed){
+  const inp=$('modalInput');
+  let response='';
+
+  if(currentPromptType==='confirm'){
+    response=confirmed?'1':'0';
+  }else if(!confirmed){
+    response=currentPromptDefault;
+  }else{
+    response=inp.value.trim()||currentPromptDefault;
+    if(currentPromptType==='ip'&&!promptPatterns.ip.test(response)){
+      inp.style.borderColor='#e74c3c';
+      inp.focus();
+      return;
+    }
+    if(currentPromptType==='mac'&&!promptPatterns.mac.test(response)){
+      inp.style.borderColor='#e74c3c';
+      inp.focus();
+      return;
+    }
+    if(currentPromptType==='number'){
+      response=parseFloat(response)||0;
+    }
+  }
+
+  $('modalOverlay').classList.remove('show');
+  const line=document.createElement('div');
+  line.className='line '+(confirmed?'green':'yellow');
+  line.textContent='✓ '+(currentPromptType==='confirm'?(confirmed?'Yes':'No'):response);
+  $('console').appendChild(line);
+  $('console').scrollTop=$('console').scrollHeight;
+  await fetch('/cgi-bin/api.sh?action=respond&response='+encodeURIComponent(response)).catch(()=>{});
+}
+
+load();
+</script>
+</body>
+</html>
+
