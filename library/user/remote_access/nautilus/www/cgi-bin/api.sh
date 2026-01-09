@@ -60,15 +60,23 @@ verify_auth() {
         exit 1
     fi
 
+    # Limit password length to prevent DoS (128 chars = 256 hex chars)
+    if [ ${#encrypted_hex} -gt 256 ]; then
+        echo "Content-Type: application/json"
+        echo ""
+        echo '{"error":"Password too long"}'
+        exit 1
+    fi
+
+    # XOR decrypt with key wrapping (key is 64 hex chars = 32 bytes)
     local password=""
     local i=0
     local len=${#encrypted_hex}
+    local key_len=${#key_hex}
     while [ $i -lt $len ]; do
-        local enc_byte=$(echo "$encrypted_hex" | cut -c$((i+1))-$((i+2)))
-        local key_byte=$(echo "$key_hex" | cut -c$((i+1))-$((i+2)))
-        if [ -z "$key_byte" ]; then
-            key_byte="00"
-        fi
+        local enc_byte=$(expr substr "$encrypted_hex" $((i + 1)) 2)
+        local key_pos=$(( (i % key_len) + 1 ))
+        local key_byte=$(expr substr "$key_hex" $key_pos 2)
         local dec_byte=$(printf '%02x' $((0x$enc_byte ^ 0x$key_byte)))
         password="${password}$(printf "\\x${dec_byte}")"
         i=$((i + 2))
@@ -879,6 +887,16 @@ install_github() {
             ;;
     esac
 
+    # Reject path traversal attempts
+    case "$github_url" in
+        *..* | *%2e%2e* | *%2E%2E* | *%2e%2E* | *%2E%2e*)
+            echo "Content-Type: text/plain"
+            echo ""
+            echo "Security: Path traversal not allowed"
+            exit 1
+            ;;
+    esac
+
     [ -f "$PID_FILE" ] && { kill $(cat "$PID_FILE") 2>/dev/null; rm -f "$PID_FILE"; }
 
     url_path="${github_url#https://raw.githubusercontent.com/}"
@@ -1090,6 +1108,16 @@ install_pr() {
             ;;
     esac
 
+    # Reject path traversal attempts
+    case "$github_url" in
+        *..* | *%2e%2e* | *%2E%2E* | *%2e%2E* | *%2E%2e*)
+            echo "Content-Type: text/plain"
+            echo ""
+            echo "Security: Path traversal not allowed"
+            exit 1
+            ;;
+    esac
+
     [ -f "$PID_FILE" ] && { kill $(cat "$PID_FILE") 2>/dev/null; rm -f "$PID_FILE"; }
 
     local path_part="${pr_path#library/user/}"
@@ -1295,6 +1323,16 @@ run_github() {
             echo "Content-Type: text/plain"
             echo ""
             echo "Security: Only wifipineapplepager-payloads repos allowed"
+            exit 1
+            ;;
+    esac
+
+    # Reject path traversal attempts
+    case "$github_url" in
+        *..* | *%2e%2e* | *%2E%2E* | *%2e%2E* | *%2E%2e*)
+            echo "Content-Type: text/plain"
+            echo ""
+            echo "Security: Path traversal not allowed"
             exit 1
             ;;
     esac
