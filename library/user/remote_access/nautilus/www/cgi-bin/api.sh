@@ -1885,6 +1885,37 @@ set_config() {
     fi
 }
 
+get_favourites() {
+    local value=$(PAYLOAD_GET_CONFIG nautilus "favourites" 2>/dev/null)
+    echo "Content-Type: application/json"
+    echo ""
+    if [ -n "$value" ]; then
+        printf '{"success":true,"favourites":%s}\n' "$value"
+    else
+        echo '{"success":true,"favourites":[]}'
+    fi
+}
+
+set_favourites() {
+    local json_data
+    if [ "$REQUEST_METHOD" = "POST" ]; then
+        json_data=$(cat)
+    fi
+    local favourites=$(echo "$json_data" | jsonfilter -e '@.favourites' 2>/dev/null)
+    if [ -z "$favourites" ]; then
+        favourites="[]"
+    fi
+    PAYLOAD_SET_CONFIG nautilus "favourites" "$favourites" 2>/dev/null
+    local rc=$?
+    echo "Content-Type: application/json"
+    echo ""
+    if [ $rc -eq 0 ]; then
+        echo '{"success":true}'
+    else
+        echo '{"error":"Failed to save favourites"}'
+    fi
+}
+
 del_config() {
     local key="$1"
     if [ -z "$key" ]; then
@@ -1985,6 +2016,8 @@ case "$action" in
     get_config) require_auth; get_config "$config_key" ;;
     set_config) require_auth; set_config "$config_key" "$config_value" ;;
     del_config) require_auth; del_config "$config_key" ;;
+    get_favourites) require_auth; get_favourites ;;
+    set_favourites) require_auth; set_favourites ;;
     *) echo "Content-Type: application/json"; echo ""; echo '{"error":"Unknown action"}' ;;
 esac
 

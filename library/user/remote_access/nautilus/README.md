@@ -8,7 +8,7 @@
 
 <p align="center">
 <img src="https://img.shields.io/badge/Platform-WiFi%20Pineapple%20Pager-00d4aa?style=flat-square" />
-<img src="https://img.shields.io/badge/Version-1.5.3-blue?style=flat-square" />
+<img src="https://img.shields.io/badge/Version-1.5.4-blue?style=flat-square" />
 <img src="https://img.shields.io/badge/Author-JustSomeTrout-purple?style=flat-square" />
 </p>
 <p align="center">
@@ -104,6 +104,18 @@ Nautilus now has three payload sources accessible via tabs:
 - **Automatic Cleanup**: Downloaded payloads are removed after execution
 - **Cached for Speed**: GitHub payload list is cached locally for fast browsing
 - **Install to Local**: Save GitHub payloads permanently to your Pager with one click
+
+### ⭐ Favourites
+
+Star your most-used payloads for quick access:
+
+- **Favourites Tab**: Dedicated tab above Local/Merged/PRs for your starred payloads
+- **Star from Anywhere**: Click the star icon when viewing any Local or Merged payload
+- **Source Tracking**: Each favourite shows whether it came from Local or Merged
+- **Dual Favouriting**: The same payload can be favourited from both Local and Merged separately
+- **Quick Unfavourite**: Click the star in the favourites list to remove instantly
+- **Persistent Storage**: Favourites are saved to config and persist across sessions
+- **Stale Detection**: If a favourited payload is removed, you'll see a "Not Found" message with option to remove it
 
 ### 📶 WiFi Client Mode
 
