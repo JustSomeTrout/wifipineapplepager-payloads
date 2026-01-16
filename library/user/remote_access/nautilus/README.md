@@ -8,7 +8,7 @@
 
 <p align="center">
 <img src="https://img.shields.io/badge/Platform-WiFi%20Pineapple%20Pager-00d4aa?style=flat-square" />
-<img src="https://img.shields.io/badge/Version-1.5.4-blue?style=flat-square" />
+<img src="https://img.shields.io/badge/Version-1.5.5-blue?style=flat-square" />
 <img src="https://img.shields.io/badge/Author-JustSomeTrout-purple?style=flat-square" />
 </p>
 <p align="center">
@@ -18,7 +18,7 @@
 ```
     Title: Nautilus
     Author: JustSomeTrout (Trout / troot.)
-    Developed for Firmware version 1.0.4
+    Developed for Firmware version 1.0.6
     Category: Remote Access / Utility
     Web-based payload launcher with GitHub integration.
     Control your Pager from any device on the network.

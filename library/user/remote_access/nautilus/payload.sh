@@ -3,8 +3,8 @@
 # Title: Nautilus
 # Description: Web-based payload launcher with live console output and GitHub integration
 # Author: JustSomeTrout (Trout / troot.)
-# Version: 1.5.4
-# Firmware: Developed for Firmware version 1.0.4
+# Version: 1.5.5
+# Firmware: Developed for Firmware version 1.0.6
 #
 # Runs uhttpd with CGI to browse and execute payloads from your browser.
 # Now with GitHub integration - run payloads directly from the official repo or PRs!
@@ -15,6 +15,11 @@ WEB_DIR="$SCRIPT_DIR/www"
 PORT=8888
 PID_FILE="/tmp/nautilus.pid"
 INIT_SCRIPT="/etc/init.d/nautilus"
+
+# Check if user confirmed (works with old and new firmware)
+user_confirmed() {
+    [ "$1" = "true" ] || [ "$1" = "$DUCKYSCRIPT_USER_CONFIRMED" ]
+}
 
 get_pager_ip() {
     for iface in br-lan eth0 wlan0 usb0; do
@@ -31,7 +36,7 @@ LOG "cyan" '|║║║╠═╣║-║-║-║║--║-║╚═╗|'
 LOG "cyan" '|╝╚╝╩-╩╚═╝-╩-╩╩═╝╚═╝╚═╝|'
 LOG "cyan" '+======================+'
 LOG ""
-LOG "v1.5.4"
+LOG "v1.5.5"
 LOG ""
 LOG "yellow" '|   ~ Web Payload Launcher ~    |'
 LOG ""
@@ -42,7 +47,7 @@ if [ -f "$INIT_SCRIPT" ] && "$INIT_SCRIPT" running 2>/dev/null; then
     LOG "green" "http://$PAGER_IP:$PORT"
     LOG ""
     resp=$(CONFIRMATION_DIALOG "Stop service?")
-    if [ "$resp" = "$DUCKYSCRIPT_USER_CONFIRMED" ]; then
+    if user_confirmed "$resp"; then
         LOG "yellow" "Stopping service..."
         "$INIT_SCRIPT" stop
         "$INIT_SCRIPT" disable
@@ -57,7 +62,7 @@ RUN_MODE=$(PAYLOAD_GET_CONFIG nautilus run_mode 2>/dev/null)
 
 if [ "$AUTO_MODE" = "true" ]; then
     if [ "$RUN_MODE" = "background" ]; then
-        resp="$DUCKYSCRIPT_USER_CONFIRMED"
+        resp="true"
         LOG "cyan" "Auto-starting background mode..."
     else
         resp=""
@@ -67,13 +72,13 @@ else
     resp=$(CONFIRMATION_DIALOG "Run as background service?")
 fi
 
-if [ "$resp" = "$DUCKYSCRIPT_USER_CONFIRMED" ]; then
+if user_confirmed "$resp"; then
     LOG "cyan" "Starting as service..."
 
     if ! command -v uhttpd >/dev/null 2>&1; then
         LOG "yellow" "uhttpd required (~28KB)"
         resp=$(CONFIRMATION_DIALOG "Install uhttpd?")
-        if [ "$resp" = "$DUCKYSCRIPT_USER_CONFIRMED" ]; then
+        if user_confirmed "$resp"; then
             LOG "cyan" "Installing uhttpd..."
             opkg update >/dev/null 2>&1
             if ! opkg install uhttpd; then
@@ -87,16 +92,19 @@ if [ "$resp" = "$DUCKYSCRIPT_USER_CONFIRMED" ]; then
     fi
 
     if ! command -v ttyd >/dev/null 2>&1; then
-        LOG "yellow" "ttyd required for shell (~150KB)"
-        resp=$(CONFIRMATION_DIALOG "Install ttyd?")
-        if [ "$resp" = "$DUCKYSCRIPT_USER_CONFIRMED" ]; then
+        resp=$(CONFIRMATION_DIALOG "Install ttyd? (~150KB)")
+        if user_confirmed "$resp"; then
             LOG "cyan" "Installing ttyd..."
             opkg update >/dev/null 2>&1
-            if ! opkg install ttyd; then
-                LOG "yellow" "Shell feature disabled"
-            else
+            opkg install ttyd >/dev/null 2>&1
+            if command -v ttyd >/dev/null 2>&1; then
                 /etc/init.d/ttyd disable 2>/dev/null
+                LOG "green" "ttyd installed"
+            else
+                LOG "yellow" "Shell feature disabled"
             fi
+        else
+            LOG "yellow" "Shell feature disabled"
         fi
     fi
 
@@ -123,7 +131,7 @@ LOG "cyan" "Starting foreground mode..."
 if ! command -v uhttpd >/dev/null 2>&1; then
     LOG "yellow" "uhttpd required (~28KB)"
     resp=$(CONFIRMATION_DIALOG "Install uhttpd?")
-    if [ "$resp" = "$DUCKYSCRIPT_USER_CONFIRMED" ]; then
+    if user_confirmed "$resp"; then
         LOG "cyan" "Installing uhttpd..."
         opkg update >/dev/null 2>&1
         if ! opkg install uhttpd; then
@@ -138,17 +146,16 @@ fi
 
 TTYD_STARTED=0
 if ! command -v ttyd >/dev/null 2>&1; then
-    LOG "yellow" "ttyd required for shell (~150KB)"
-    resp=$(CONFIRMATION_DIALOG "Install ttyd?")
-    if [ "$resp" = "$DUCKYSCRIPT_USER_CONFIRMED" ]; then
+    resp=$(CONFIRMATION_DIALOG "Install ttyd? (~150KB)")
+    if user_confirmed "$resp"; then
         LOG "cyan" "Installing ttyd..."
         opkg update >/dev/null 2>&1
-        if ! opkg install ttyd; then
-            LOG "red" "ttyd install failed!"
-            LOG "yellow" "Shell feature disabled"
-        else
+        opkg install ttyd >/dev/null 2>&1
+        if command -v ttyd >/dev/null 2>&1; then
             /etc/init.d/ttyd disable 2>/dev/null
             LOG "green" "ttyd installed"
+        else
+            LOG "yellow" "Shell feature disabled"
         fi
     else
         LOG "yellow" "Shell feature disabled"
